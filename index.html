@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Convert Miliastra UI groups between Server and Client control templates. Private, browser-only GIA conversion.">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml"><title>UI GIA Converter · Miliastra Toolkit</title>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('theme')==='light'?'light':'dark'}catch(e){}</script>
+<link rel="stylesheet" href="css/theme.css"><link rel="stylesheet" href="css/converter.css">
+</head>
+<body>
+<header><a class="brand" href="./"><span class="brand-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h16m-4-4 4 4-4 4M20 16H4m4-4-4 4 4 4"/></svg></span><span>MILIASTRA <b>TOOLKIT</b></span></a><div class="preferences"><label class="sr-only" for="language" data-i18n="converter.language">Language</label><select id="language"></select><button id="theme" class="icon-button" data-i18n-aria-label="converter.theme" aria-label="Toggle theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4v16"/><path d="M12 4a8 8 0 0 1 0 16Z" fill="currentColor" stroke="none"/></svg></button></div></header>
+<main>
+<h1 data-i18n="converter.footer">Server ↔ Client UI Converter</h1>
+<section class="workspace" aria-labelledby="upload-title">
+<div class="upload-panel"><div class="section-heading"><h2 id="upload-title" data-i18n="converter.upload">Add your template</h2><span class="file-tag">.GIA</span></div>
+<label id="dropzone" class="dropzone" for="file"><input id="file" type="file" accept=".gia"><span class="upload-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4m-5 5 5-5 5 5M4 16v4h16v-4"/></svg></span><strong data-i18n="converter.drop">Drop a .gia file here</strong><span data-i18n="converter.browse">or click to browse</span></label>
+<div id="file-info" class="selected-file" hidden><span class="file-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H5v18h14V8Zm0 0v5h5M8 12h8M8 16h8"/></svg></span><div><strong id="file-name"></strong><small id="file-size"></small></div><button id="clear" class="icon-button" data-i18n-aria-label="converter.clear" aria-label="Remove file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+</div>
+<div class="output-panel"><div class="section-heading"><h2 data-i18n="converter.output">Convert & download</h2></div>
+<dl class="details"><div><dt data-i18n="converter.source">Detected format</dt><dd id="source">—</dd></div><div><dt data-i18n="converter.target">Target format</dt><dd id="target">—</dd></div><div><dt data-i18n="converter.mode">GIA mode</dt><dd id="mode">—</dd></div><div><dt data-i18n="converter.group">Group name</dt><dd id="group">—</dd></div><div><dt data-i18n="converter.images">Controls</dt><dd id="images">—</dd></div></dl>
+<div id="status" class="status" role="status" aria-live="polite"></div>
+<button id="convert" class="primary-button" disabled><span data-i18n="converter.convert">Convert template</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></button><a id="download" class="primary-button download" hidden data-i18n="converter.download">Download .gia</a>
+</div>
+</section>
+</main>
+<script src="js/gia.js"></script><script src="js/import-profiles.js"></script><script src="js/control-profiles.js"></script><script src="js/control-converter.js"></script><script src="js/converter.js"></script>
+<script src="js/locales/en.js"></script><script src="js/locales/zh-CN.js"></script><script src="js/locales/zh-TW.js"></script><script src="js/locales/ja.js"></script><script src="js/locales/ko.js"></script><script src="js/locales/fr.js"></script><script src="js/locales/de.js"></script><script src="js/locales/es.js"></script><script src="js/locales/pt.js"></script><script src="js/locales/ru.js"></script><script src="js/locales/th.js"></script><script src="js/locales/vi.js"></script><script src="js/locales/id.js"></script><script src="js/locales/tr.js"></script><script src="js/locales/it.js"></script><script src="js/converter-locales.js"></script><script src="js/i18n.js"></script><script src="js/app.js"></script>
+</body></html>
+

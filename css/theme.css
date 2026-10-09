@@ -1,0 +1,113 @@
+/* ============================================================
+   Material Design 3 — Primitive Shaper (Global static port)
+   Seed: Indigo #4355B9 — carried over from the Miliastra toolkit
+   ============================================================ */
+
+:root {
+  --md-primary: #4355B9;
+  --md-on-primary: #FFFFFF;
+  --md-primary-container: #DEE0FF;
+  --md-on-primary-container: #00105C;
+
+  --md-secondary: #5C5F71;
+  --md-on-secondary: #FFFFFF;
+  --md-secondary-container: #E1E0F9;
+  --md-on-secondary-container: #191C2B;
+
+  --md-tertiary: #006A6A;
+  --md-on-tertiary: #FFFFFF;
+  --md-tertiary-container: #9CF1F0;
+  --md-on-tertiary-container: #002020;
+
+  --md-error: #BA1A1A;
+  --md-on-error: #FFFFFF;
+  --md-error-container: #FFDAD6;
+  --md-on-error-container: #410002;
+
+  --md-background: #FBF8FF;
+  --md-on-background: #1B1B21;
+  --md-surface: #FBF8FF;
+  --md-on-surface: #1B1B21;
+  --md-surface-variant: #E4E1EC;
+  --md-on-surface-variant: #46464F;
+  --md-surface-container-lowest: #FFFFFF;
+  --md-surface-container-low: #F5F2FA;
+  --md-surface-container: #EFEDF5;
+  --md-surface-container-high: #E9E7EF;
+  --md-surface-container-highest: #E3E1E9;
+  --md-outline: #777680;
+  --md-outline-variant: #C7C5D0;
+  --md-inverse-surface: #303036;
+  --md-inverse-on-surface: #F2F0F7;
+
+  --md-elevation-1: 0 1px 2px rgba(0,0,0,.06), 0 1px 3px 1px rgba(0,0,0,.04);
+  --md-elevation-2: 0 1px 2px rgba(0,0,0,.06), 0 2px 6px 2px rgba(0,0,0,.04);
+  --md-elevation-3: 0 4px 8px 3px rgba(0,0,0,.04), 0 1px 3px rgba(0,0,0,.06);
+
+  --md-shape-xs: 4px;
+  --md-shape-sm: 8px;
+  --md-shape-md: 12px;
+  --md-shape-lg: 16px;
+  --md-shape-xl: 28px;
+  --md-shape-full: 9999px;
+
+  /* System font stacks: complete glyph coverage for all 15 languages. */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans",
+               "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans",
+               "Microsoft YaHei", "Malgun Gothic", "Leelawadee UI", sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
+
+  --success: var(--md-tertiary);
+  --warning: #E8A317;
+  color-scheme: light;
+}
+
+/* ── Dark theme (default; toggled via data-theme, persisted) ──
+   Same indigo seed mapped to the M3 dark tonal palette. */
+:root[data-theme="dark"] {
+  --md-primary: #BAC3FF;
+  --md-on-primary: #08218A;
+  --md-primary-container: #293CA0;
+  --md-on-primary-container: #DEE0FF;
+
+  --md-secondary: #C5C4DD;
+  --md-on-secondary: #2E3042;
+  --md-secondary-container: #444559;
+  --md-on-secondary-container: #E1E0F9;
+
+  --md-tertiary: #80D4D4;
+  --md-on-tertiary: #003737;
+  --md-tertiary-container: #004F50;
+  --md-on-tertiary-container: #9CF1F0;
+
+  --md-error: #FFB4AB;
+  --md-on-error: #690005;
+  --md-error-container: #93000A;
+  --md-on-error-container: #FFDAD6;
+
+  /* softened dark neutrals (a few tones lighter than stock M3 dark —
+     less contrast strain on large surfaces) */
+  --md-background: #1E2028;
+  --md-on-background: #E8E6F0;
+  --md-surface: #1E2028;
+  --md-on-surface: #E8E6F0;
+  --md-surface-variant: #4C4D58;
+  --md-on-surface-variant: #CDCBD6;
+  --md-surface-container-lowest: #191B22;
+  --md-surface-container-low: #262832;
+  --md-surface-container: #2B2D38;
+  --md-surface-container-high: #333644;
+  --md-surface-container-highest: #3D404E;
+  --md-outline: #9C9BA8;
+  --md-outline-variant: #4C4D58;
+  --md-inverse-surface: #E8E6F0;
+  --md-inverse-on-surface: #303036;
+
+  --md-elevation-1: 0 1px 2px rgba(0,0,0,.35), 0 1px 3px 1px rgba(0,0,0,.25);
+  --md-elevation-2: 0 1px 2px rgba(0,0,0,.35), 0 2px 6px 2px rgba(0,0,0,.25);
+  --md-elevation-3: 0 4px 8px 3px rgba(0,0,0,.25), 0 1px 3px rgba(0,0,0,.35);
+
+  --warning: #F5C518;
+  color-scheme: dark;
+}
+

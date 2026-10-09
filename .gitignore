@@ -1,0 +1,15 @@
+/handoff*/
+node_modules/
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+*.log
+/test-results/
+/playwright-report/
+
+/output/

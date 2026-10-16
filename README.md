@@ -1,6 +1,6 @@
 # Miliastra UI GIA Converter
 
-Static, browser-only conversion between Server and Client UI control templates. No build step, backend, CDN, or runtime dependencies. All application paths are relative, including template fetches, so GitHub Pages repository subpaths work.
+Static, browser-only conversion among Asset Groups, Server Control Templates, and Client Control Templates. No build step, backend, CDN, or runtime dependencies. All application paths are relative, including template fetches, so GitHub Pages repository subpaths work.
 
 ## Run locally
 
@@ -15,6 +15,18 @@ Open http://localhost:8000/. Serve over HTTP rather than opening `index.html` as
 ## GitHub Pages
 
 Commit the root `index.html`, `.nojekyll`, `css/`, `js/`, and `assets/` (along with this README and LICENSE). In the repository's Pages settings, publish from your branch's **root** directory. No build command is needed. The handoff folder is excluded by `.gitignore`; the deployed site never reads it.
+
+## Conversion formats
+
+Drop a `.gia` file anywhere on the page. The source format is detected automatically. Click **Convert template** to confirm conversion into both other formats. Two labeled download buttons appear together when both files are ready. Uploading a file alone does not start conversion. Replacing or clearing the file cancels pending work and removes both previous downloads.
+
+| Format | Primary resource class |
+|---|---:|
+| Asset Group | 61 |
+| Server Control Template | 21 |
+| Client Control Template | 70 |
+
+All six conversion directions are supported for mapped controls. Masks are intentionally lost when converting to Server Control Template and cannot be restored by converting back. Server Asset Groups and Server Control Templates share child control payloads but require different parent schemas. Both output types rebuild their parent metadata from working references: Asset Groups use metadata type 55 and Server templates use type 13. Server templates flatten parent translation into child positions and omit all masking. The export class, metadata type, parent components and embedded GUID are checked together before downloads are offered. Standalone controls are wrapped in a group when targeting Asset Group. Server-to-Server format changes retain child order; crossing the Client boundary reverses the serialized child lists according to the existing ordering mapping. Existing unsupported-control and setting restrictions still apply.
 
 ## Supported input
 
@@ -47,6 +59,7 @@ node tests/parent-mask.cjs
 node tests/multi-groups.cjs
 node tests/controls.cjs
 node tests/animations.cjs
+node tests/formats.cjs
 ```
 
 Browser checks require the `playwright` Node package and Chrome (or `CHROME_PATH` pointing to another Chromium executable). Start `python -m http.server 8321 --bind 127.0.0.1` first, then run:

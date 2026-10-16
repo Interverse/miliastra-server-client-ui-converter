@@ -1,77 +1,48 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium}=require('playwright');
-const G=require('../js/gia');
+const G=require('../js/gia'),C=require('../js/converter');
 (async()=>{
  fs.mkdirSync('test-results',{recursive:true});
  const fixture=G.convertJsonToGiaBytes({import_scene:true,group_name:'Browser test',elements:[{type:'rectangle',imported_name:'Test image',relative:{x:1,y:2},size:{width:30,height:20}}],mask:{position:{x:0,y:0},size:{x:80,y:80},enabled:false}},fs.readFileSync('assets/image_template.gia'),G.MODE_IMAGE);
  fs.writeFileSync('test-results/input.gia',fixture);
  const browser=await chromium.launch({executablePath:process.env.CHROME_PATH||'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
- const context=await browser.newContext({viewport:{width:1280,height:1000},acceptDownloads:true});const page=await context.newPage();let errors=[];
+ const context=await browser.newContext({viewport:{width:1280,height:1100},acceptDownloads:true});const page=await context.newPage(),errors=[];
  page.on('pageerror',e=>errors.push(e.message));page.on('response',r=>{if(r.status()>=400)errors.push(r.status()+' '+r.url())});
- await page.goto(process.env.SITE_URL||'http://127.0.0.1:8321/');await page.screenshot({path:'test-results/desktop.png',fullPage:true});
- assert(await page.locator('#convert').isDisabled());assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
- await page.evaluate(data=>{
-  const transfer=new DataTransfer();transfer.items.add(new File([Uint8Array.from(data)],'page-drop.gia',{type:'application/octet-stream'}));
-  document.querySelector('header').dispatchEvent(new DragEvent('dragenter',{bubbles:true,cancelable:true,dataTransfer:transfer}));
-  document.body.dispatchEvent(new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:transfer}));
- },Array.from(fixture));
- await page.waitForFunction(()=>!document.getElementById('convert').disabled);
- assert.equal(await page.locator('#file-name').textContent(),'page-drop.gia');
- assert.equal(await page.locator('body').evaluate(el=>el.classList.contains('file-drag')),false);
- await page.locator('#clear').click();
- await page.locator('#file').setInputFiles('test-results/input.gia');await page.waitForFunction(()=>!document.getElementById('convert').disabled);
- assert.equal(await page.locator('#target').textContent(),'Client');
- await page.locator('#convert').click();await page.locator('#download').waitFor({state:'visible'});
- const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#download').click()]);await download.saveAs('test-results/output.gia');
- const C=require('../js/converter');assert.equal(C.decodeUiGia(fs.readFileSync('test-results/output.gia')).kind,'client');
- await page.locator('#file').setInputFiles('tests/fixtures/OrangeDisc.gia');await page.waitForFunction(()=>document.getElementById('images').textContent==='90');
- assert.equal(await page.locator('#source').textContent(),'Server');assert.equal(await page.locator('#target').textContent(),'Client');
- await page.locator('#convert').click();await page.locator('#download').waitFor({state:'visible'});
- await page.locator('#file').setInputFiles('tests/fixtures/Terra_Blade.gia');await page.waitForFunction(()=>document.getElementById('images').textContent==='128');
- await page.locator('#convert').click();await page.locator('#download').waitFor({state:'visible'});
- const [terraDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#download').click()]);
- await terraDownload.saveAs('test-results/Terra_Blade_client.gia');
- const terra=C.decodeUiGia(fs.readFileSync('test-results/Terra_Blade_client.gia'));
- assert.equal(terra.kind,'client');assert.equal(terra.json.elements.length,128);
- const original=C.decodeUiGia(fs.readFileSync('tests/fixtures/Terra_Blade.gia'));assert(C.equalScene(original,terra));
- await page.locator('#file').setInputFiles('tests/fixtures/z_bigbanner.gia');await page.waitForFunction(()=>document.getElementById('group').textContent==='Big Banner');
- await page.locator('#convert').click();await page.locator('#download').waitFor({state:'visible'});
- const [bannerDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#download').click()]);
- await bannerDownload.saveAs('test-results/z_bigbanner_client.gia');
- const banner=C.decodeUiGia(fs.readFileSync('test-results/z_bigbanner_client.gia'));
- assert.equal(banner.model.container.isMask,true);assert.equal(banner.model.container.transform.size.y,50);
- assert(C.equalScene(C.decodeUiGia(fs.readFileSync('tests/fixtures/z_bigbanner.gia')),banner));
- await page.locator('#file').setInputFiles('tests/fixtures/z_frisbee_all.gia');await page.waitForFunction(()=>document.getElementById('images').textContent==='289');
- assert.equal(await page.locator('#group').textContent(),'PurpleDisc, CyanDisc, OrangeDisc');
- await page.locator('#convert').click();await page.locator('#download').waitFor({state:'visible'});
- const [multiDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#download').click()]);
- await multiDownload.saveAs('test-results/z_frisbee_all_client.gia');
- const multi=C.decodeUiGia(fs.readFileSync('test-results/z_frisbee_all_client.gia'));
- assert.equal(multi.groups.length,3);assert.equal(multi.json.elements.length,289);
- assert(C.equalScene(C.decodeUiGia(fs.readFileSync('tests/fixtures/z_frisbee_all.gia')),multi));
- await page.locator('#file').setInputFiles('tests/fixtures/z_scoreboard.gia');await page.waitForFunction(()=>document.getElementById('images').textContent==='83');
- assert.equal(await page.locator('#target').textContent(),'Client');
- await page.locator('#convert').click();await page.locator('#download').waitFor({state:'visible'});
- const [scoreDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#download').click()]);await scoreDownload.saveAs('test-results/z_scoreboard_client.gia');
- assert(C.equalScene(C.decodeUiGia(fs.readFileSync('tests/fixtures/z_scoreboard.gia')),C.decodeUiGia(fs.readFileSync('test-results/z_scoreboard_client.gia'))));
- await page.locator('#file').setInputFiles('test-results/z_scoreboard_client.gia');await page.waitForFunction(()=>document.getElementById('target').textContent==='Server');
- await page.locator('#convert').click();await page.locator('#download').waitFor({state:'visible'});
- const [scoreBack]=await Promise.all([page.waitForEvent('download'),page.locator('#download').click()]);await scoreBack.saveAs('test-results/z_scoreboard_server.gia');
- assert(C.equalScene(C.decodeUiGia(fs.readFileSync('tests/fixtures/z_scoreboard.gia')),C.decodeUiGia(fs.readFileSync('test-results/z_scoreboard_server.gia'))));
- await page.locator('#file').setInputFiles('tests/fixtures/z_ui_animation_server.gia');await page.waitForFunction(()=>document.getElementById('images').textContent==='2');
- await page.locator('#convert').click();await page.locator('#download').waitFor({state:'visible'});
- const [animationDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#download').click()]);await animationDownload.saveAs('test-results/animations_client.gia');
- assert(C.equalScene(C.decodeUiGia(fs.readFileSync('tests/fixtures/z_ui_animation_server.gia')),C.decodeUiGia(fs.readFileSync('test-results/animations_client.gia'))));
- await page.locator('#file').setInputFiles('tests/fixtures/z_clientcontrol.gia');await page.waitForFunction(()=>document.getElementById('status').textContent.includes('GridScrollerControl'));
- assert(await page.locator('#convert').isDisabled());assert(await page.locator('#download').isHidden());
- await page.selectOption('#language','zh-CN');assert.equal(await page.evaluate(()=>localStorage.getItem('miliastra-lang')),'zhs');
- await page.selectOption('#language','en');await page.locator('#theme').click();await page.reload();assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
- await page.locator('#theme').click();
- const other=await page.context().newPage();await other.goto(process.env.SITE_URL||'http://127.0.0.1:8321/');await other.selectOption('#language','fr');await page.waitForFunction(()=>document.documentElement.lang==='fr');await other.selectOption('#language','en');await other.close();
- await page.setViewportSize({width:390,height:844});await page.screenshot({path:'test-results/mobile.png',fullPage:true});
- assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
- fs.writeFileSync('test-results/invalid.gia',Buffer.from('not gia'));await page.locator('#file').setInputFiles('test-results/invalid.gia');await page.waitForFunction(()=>document.getElementById('status').classList.contains('error'));assert(await page.locator('#convert').isDisabled());assert(await page.locator('#download').isHidden());
- await page.locator('#file').setInputFiles('test-results/input.gia');await page.waitForFunction(()=>!document.getElementById('convert').disabled);await page.route('**/assets/*.gia',route=>route.abort());await page.locator('#convert').click();await page.waitForFunction(()=>document.getElementById('status').classList.contains('error'));assert(await page.locator('#download').isHidden());
- assert.deepEqual(errors,[]);await browser.close();console.log('PASS: browser upload, verified download, invalid input, failed fetch, theme persistence, language sync and mobile layout');
+ let templateRequests=0;page.on('request',r=>{if(/\/assets\/[^/]+\.gia$/.test(new URL(r.url()).pathname))templateRequests++;});
+ const site=process.env.SITE_URL||'http://127.0.0.1:8321/';await page.goto(site);
+ assert.equal(await page.locator('#downloads a').count(),0);assert.equal(await page.locator('#target').count(),0);assert(await page.locator('#convert').isDisabled());
+ assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
+ async function confirm(){await page.waitForFunction(()=>!document.getElementById('convert').disabled);assert.equal(await page.locator('#downloads a').count(),0);await page.locator('#convert').click();}
+ async function ready(){await confirm();await page.waitForFunction(()=>document.querySelectorAll('#downloads a').length===2);assert.equal(await page.locator('#downloads').getAttribute('aria-busy'),'false');}
+ async function verifyDownloads(input,prefix){
+  const source=C.decodeUiGia(input),targets=C.FORMATS.filter(f=>f!==source.format);
+  assert.deepEqual(await page.locator('#downloads a').evaluateAll(links=>links.map(a=>a.dataset.format)),targets);
+  for(const format of targets){
+   const link=page.locator('#downloads a[data-format="'+format+'"]');assert(await link.isVisible());
+   const [download]=await Promise.all([page.waitForEvent('download'),link.click()]);const path='test-results/'+prefix+'_'+format+'.gia';await download.saveAs(path);
+   assert(download.suggestedFilename().endsWith('_'+format+'.gia'));const result=C.decodeUiGia(fs.readFileSync(path));assert.equal(result.format,format);assert(C.equalScene(source,result));
+  }
+ }
+ await page.evaluate(data=>{const transfer=new DataTransfer();transfer.items.add(new File([Uint8Array.from(data)],'page-drop.gia'));document.querySelector('header').dispatchEvent(new DragEvent('dragenter',{bubbles:true,cancelable:true,dataTransfer:transfer}));document.body.dispatchEvent(new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:transfer}));},Array.from(fixture));
+ await page.waitForFunction(()=>!document.getElementById('convert').disabled);assert.equal(templateRequests,0,'Upload must not fetch conversion templates before confirmation');
+ await ready();assert.equal(await page.locator('#file-name').textContent(),'page-drop.gia');assert.equal(await page.locator('body').evaluate(el=>el.classList.contains('file-drag')),false);await verifyDownloads(fixture,'drop');
+ await page.locator('#clear').click();assert.equal(await page.locator('#downloads a').count(),0);
+ for(const name of ['OrangeDisc','Terra_Blade','z_bigbanner','z_frisbee_all','z_scoreboard','z_ui_animation_server','ServerControlTemplate']){
+  await page.locator('#file').setInputFiles('tests/fixtures/'+name+'.gia');await ready();await verifyDownloads(fs.readFileSync('tests/fixtures/'+name+'.gia'),name);
+ }
+ // Both remaining formats are prepared together after confirmation.
+ for(const format of ['asset-group','client-control']){
+  const file='test-results/ServerControlTemplate_'+format+'.gia';await page.locator('#file').setInputFiles(file);await ready();await verifyDownloads(fs.readFileSync(file),'from_'+format);
+ }
+ await page.selectOption('#language','zh-CN');assert.equal(await page.evaluate(()=>localStorage.getItem('miliastra-lang')),'zhs');assert(await page.locator('#downloads a').first().getAttribute('aria-label'));await page.selectOption('#language','en');
+ await page.screenshot({path:'test-results/desktop.png',fullPage:true});await page.setViewportSize({width:390,height:844});await page.screenshot({path:'test-results/mobile.png',fullPage:true});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ await page.locator('#file').setInputFiles('tests/fixtures/z_clientcontrol.gia');await page.waitForFunction(()=>document.getElementById('status').textContent.includes('GridScrollerControl'));assert.equal(await page.locator('#downloads a').count(),0);
+ fs.writeFileSync('test-results/invalid.gia',Buffer.from('not gia'));await page.locator('#file').setInputFiles('test-results/invalid.gia');await page.waitForFunction(()=>document.getElementById('status').classList.contains('error'));assert.equal(await page.locator('#downloads a').count(),0);
+ await page.route('**/assets/*.gia',route=>route.abort());await page.locator('#file').setInputFiles('test-results/input.gia');await confirm();await page.waitForFunction(()=>document.getElementById('status').classList.contains('error'));assert.equal(await page.locator('#downloads a').count(),0);await page.unroute('**/assets/*.gia');
+ // Clearing while templates load cancels the old run and never restores stale downloads.
+ let release;const gate=new Promise(resolve=>release=resolve);await page.route('**/assets/*.gia',async route=>{await gate;try{await route.continue();}catch(e){}});
+ await page.locator('#file').setInputFiles('test-results/input.gia');await confirm();await page.waitForFunction(()=>document.getElementById('downloads').getAttribute('aria-busy')==='true');await page.locator('#clear').click();release();await page.unroute('**/assets/*.gia');
+ await page.locator('#file').setInputFiles('tests/fixtures/ServerControlTemplate.gia');await ready();assert.equal(await page.locator('#file-name').textContent(),'ServerControlTemplate.gia');assert.equal(await page.locator('#downloads a').evaluateAll(links=>links.every(a=>a.download.startsWith('ServerControlTemplate_'))),true);
+ await page.locator('#theme').click();await page.reload();assert.equal(await page.locator('html').getAttribute('data-theme'),'light');await page.locator('#theme').click();
+ const other=await context.newPage();await other.goto(site);await other.selectOption('#language','fr');await page.waitForFunction(()=>document.documentElement.lang==='fr');await other.selectOption('#language','en');await other.close();
+ assert.deepEqual(errors,[]);await browser.close();console.log('PASS: confirmation required before paired conversion for all formats, verified contents, drag/drop, stale-run cancellation, errors, preferences and mobile layout');
 })().catch(e=>{console.error(e);process.exit(1)});
-
-

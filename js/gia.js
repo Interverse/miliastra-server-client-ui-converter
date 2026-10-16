@@ -3984,7 +3984,7 @@ var GIA = (function () {
             var content=parse_message_fields(u.data);content.forEach(function(c){
               if(c.tag===501||c.tag===504){if(map.has(c.value))c.value=map.get(c.value);}
               else if(c.tag===503){if(c.wire===0)c.value=map.get(c.value);else{var reader=new ProtoReader(c.data),list=[];while(!reader.eof())list.push(map.get(reader.read_varint()));c.data=encode_packed_varints(list);}}
-              else if(c.tag===502)c.data=_client_patch_info(c.data,id,old.index);
+              else if(c.tag===502)c.data=patchDetail(_client_patch_info(c.data,id,old.index),map);
               else if(c.tag===505){var comp=parse_message_fields(c.data);comp.forEach(function(q){if(q.tag===503)q.data=patchDetail(q.data,map);});c.data=build_message(comp);}
             });u.data=build_message(content);
           });e.data=build_message(ui);}
@@ -3995,7 +3995,31 @@ var GIA = (function () {
     return wrapUiFields(result.concat(children,metadata),first);
   }
 
+  // Server exports share control payloads; the primary resource class selects
+  // an Asset Group (61) or Server Control Template (21).
+  function setServerExportFormat(input,resourceClass){
+    var data=toUint8(input),parsed=_parse_gia_root_fields(data),fields=parse_message_fields(data.subarray(20,20+parsed.content_len));
+    var root=fields.find(function(f){return f.tag===1;}),model=describeGia(data),parent=model.container;
+    var primitive=parent.componentTypes.some(function(t){return [25,38,39,57].includes(t);});
+    if(resourceClass===61&&primitive){
+      var guid=[parent].concat(model.children).reduce(function(max,o){return Math.max(max,o.guid);},0)+1;
+      var parentContent=create_ui_image_payload({guid:guid,index:Math.max(0,parent.index-1),parent_guid:0,offset_x:0,offset_y:0,size_x:1,size_y:1,name:parent.resourceName});
+      var contentFields=parse_message_fields(parentContent.get_bytes()).filter(function(f){if(f.tag===504)return false;if(f.tag!==505)return true;return [15,23].includes(_find_varint(parse_message_fields(f.data),502));});
+      contentFields.push(_lenField(503,encode_packed_varints([parent.guid])));
+      var container=create_ui_image_entry(guid,parent.resourceName,{buffer:Array.from(build_message(contentFields))},true).get_bytes();
+      container=_msg_set_varint(container,5,61);
+      var ident=_find_bytes(parse_message_fields(root.data),1);
+      container=build_message(parse_message_fields(container).concat([_lenField(2,ident)]));
+      var entry=parse_message_fields(root.data),ui=_find_bytes(entry,19),content=_find_bytes(parse_message_fields(ui),1);
+      var cf=parse_message_fields(_msg_set_varint(content,504,guid)).filter(function(f){return f.tag!==502||[1,2].includes(_find_varint(parse_message_fields(f.data),501));});
+      var child=_msg_set_varint(_msg_set_bytes(root.data,19,_msg_set_bytes(ui,1,build_message(cf))),5,15);
+      fields=fields.filter(function(f){return f!==root;});fields.unshift(_lenField(1,container),_lenField(2,child));
+    }else root.data=_msg_set_varint(root.data,5,resourceClass);
+    return wrapUiFields(fields,parsed);
+  }
+
   return {
+    setServerExportFormat:setServerExportFormat,
     controlWire: {parse:parse_message_fields, build:build_message, bytes:_find_bytes, value:_find_varint,
       setBytes:_msg_set_bytes,setValue:_msg_set_varint,deleteField:_msg_delete_field,
       len:_lenField,variable:_varField,wrap:wrapUiFields,parseRoot:_parse_gia_root_fields,

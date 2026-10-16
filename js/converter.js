@@ -108,7 +108,7 @@
   }
   function equalScene(a,b) {
     if(a.groups||b.groups){const ga=a.groups||[a],gb=b.groups||[b];return ga.length===gb.length&&ga.every((g,i)=>equalScene(g,gb[i]));}
-    if(a.mixedControls||b.mixedControls)return Controls.equalScene(a,b);
+    if(a.mixedControls||b.mixedControls){const comparable=s=>{if(s.mixedControls)return s;const n=Controls.decodeModel(s.model);n.json.elements=n.json.elements.filter(e=>e.model!==s.model.container);return n;};return Controls.equalScene(comparable(a),comparable(b));}
     if(a.json.group_name!==b.json.group_name || a.isClassic!==b.isClassic || a.json.elements.length!==b.json.elements.length || a.json.mask.enabled!==b.json.mask.enabled || a.json.mask.shape_type!==b.json.mask.shape_type) return false;
     if(a.json.mask.enabled && !['x','y','width','height'].every(k=>near(a.json.image_bounds[k],b.json.image_bounds[k]))) return false;
     return a.json.elements.every((e,i)=>{
@@ -140,17 +140,31 @@
   }
   function decodeUiGia(input) {
     envelope(input);let parts;try{parts=G.splitUiGroups(input);}catch(e){fail('links',e.message);}
-    const groups=parts.map(p=>Controls.handles(p)?Controls.decode(p):decodeSingleUiGia(p));return groups.length===1?groups[0]:summarizeGroups(groups);
+    const groups=parts.map(p=>{const g=Controls.handles(p)?Controls.decode(p):decodeSingleUiGia(p);g.format=g.model.containerClass===70?'client-control':g.model.containerClass===21?'server-control':'asset-group';return g;});if(groups.some(g=>g.format!==groups[0].format))fail('unsupported','Mixed export formats are not supported in one file');return groups.length===1?groups[0]:summarizeGroups(groups);
   }
-  function convertUiGia(input,targetTemplate) {
+  function convertUiGia(input,targetTemplate,targetFormat) {
+    if(targetFormat)return convertToFormat(input,targetTemplate,targetFormat);
     envelope(input);
     const source=decodeUiGia(input), parts=G.splitUiGroups(input);
-    const outputs=parts.map(p=>Controls.handles(p)?Controls.convert(p):convertSingleUiGia(p,targetTemplate));
+    const outputs=parts.map(p=>{const m=G.describeGia(p);if(m.containerClass===21&&m.children.length&&m.children.every(o=>o.componentTypes.includes(38)&&o.parentGuid===m.container.guid&&!o.childGuids.length))return convertSingleUiGia(G.setServerExportFormat(p,61),targetTemplate);return Controls.handles(p)?Controls.convert(p):convertSingleUiGia(p,targetTemplate);});
     const bytes=G.mergeUiGroups(outputs.map(o=>o.bytes)),result=decodeUiGia(bytes);
     if(!equalScene(source,result))fail('validation');
     return {bytes,source,result};
   }
-  const api={decodeUiGia,convertUiGia,equalScene,ConversionError};
+  const FORMATS=['asset-group','server-control','client-control'];
+  function convertToFormat(input,targetTemplate,targetFormat){
+    if(!FORMATS.includes(targetFormat))fail('unsupported','Unknown output format');
+    const source=decodeUiGia(input),side=targetFormat==='client-control'?'client':'server';
+    const parts=G.splitUiGroups(input).map(part=>{
+      const original=decodeUiGia(part);
+      const converted=original.kind===side?part:convertUiGia(part,targetTemplate).bytes;
+      return side==='client'?converted:targetFormat==='server-control'?Controls.serverTemplate(converted):Controls.assetTemplate(converted);
+    });
+    const bytes=G.mergeUiGroups(parts);if(side==='server')Controls.validateServerExport(bytes,targetFormat);const result=decodeUiGia(bytes);
+    if(result.format!==targetFormat||!equalScene(source,result))fail('validation','Output format or controls did not match');
+    return {bytes,source,result};
+  }
+  const api={decodeUiGia,convertUiGia,equalScene,ConversionError,FORMATS};
   if(typeof module==='object') module.exports=api; else root.UiConverter=api;
 })(typeof window==='object'?window:globalThis);
 

@@ -11,7 +11,7 @@ for(const classic of [false,true]){
  const before=r.source.model,after=r.result.model;
  const byId=new Map(after.children.map(o=>[o.guid,o]));
  assert.deepEqual(after.container.childGuids.map(id=>byId.get(id).resourceName),before.children.map(o=>o.resourceName).reverse());
- for(const o of before.children){const p=byId.get(o.guid);assert.equal(p.parentGuid,after.container.guid);assert.equal(p.index,o.index);assert.deepEqual(p.transform.platformTransforms,o.transform.platformTransforms);
+ for(const o of before.children){const p=byId.get(o.guid);assert.equal(p.parentGuid,after.container.guid);assert.equal(p.index,o.index);for(let i=0;i<4;i++){const source=o.transform.platformTransforms[i],target=p.transform.platformTransforms[i],parent=after.container.transform.platformTransforms[i];for(const k of ['size','scale','rotation','anchorMin','anchorMax','pivot'])assert.deepEqual(target[k],source[k]);assert(Math.abs(target.offset.x+parent.offset.x-source.offset.x)<1e-4);assert(Math.abs(target.offset.y+parent.offset.y-source.offset.y)<1e-4);}
   if(o.componentTypes.includes(25)){
    assert(p.componentTypes.includes(84));assert.equal(p.transform.platformDiscriminator,31);
    const a=payload(o,25,19),b=payload(p,84,75);

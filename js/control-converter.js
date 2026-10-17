@@ -10,7 +10,7 @@ const content=entry=>W.bytes(W.parse(W.bytes(W.parse(entry),19)),1);
 const component=(o,type)=>o.components.find(c=>c.type===type);
 function payload(c,tag){return W.bytes(W.parse(W.bytes(W.parse(hex(c.rawHex)),503)),tag);}
 function kind(o,side){if(component(o,side==='server'?39:98))return 'animation';if(component(o,side==='server'?57:99))return 'fullscreenAnimation';if(component(o,side==='server'?25:84))return 'text';if(component(o,side==='server'?38:96))return 'image';if(o.role==='container'||component(o,91)||(side==='server'&&o.componentTypes.every(t=>[15,23,12].includes(t))))return 'container';return 'unsupported';}
-function handles(bytes){const m=G.describeGia(bytes);return m.container.resourceClass===21||m.container.componentTypes.includes(91)||[m.container,...m.children].some(o=>o.componentTypes.some(t=>[25,39,57,84,85,89,92,93,94,95,98,99].includes(t)));}
+function handles(bytes){const m=G.describeGia(bytes);return (m.container.resourceClass===61&&!m.children.length)||m.container.resourceClass===21||m.container.componentTypes.includes(91)||[m.container,...m.children].some(o=>o.componentTypes.some(t=>[25,39,57,84,85,89,92,93,94,95,98,99].includes(t)));}
 function ordered(m){const visited=new Set();const by=new Map(m.children.map(o=>[o.guid,o])),out=[];function visit(p){let ids=p.childGuids.slice();if(m.templateKind==='client')ids.reverse();for(const id of ids){const o=by.get(id);if(!o||visited.has(id))error('links');visited.add(id);out.push(o);visit(o);}}visit(m.container);if(out.length!==m.children.length||new Set(out.map(o=>o.guid)).size!==out.length)error('links');return out;}
 function decode(bytes){
  return decodeModel(G.describeGia(bytes));
@@ -20,7 +20,7 @@ function decodeModel(m){
  if(!['server','client'].includes(side))error('unsupported');
  const all=[m.container,...m.children],ids=new Set();
  if(m.rootTags.filter(t=>t===1).length!==1||m.rootTags.some(t=>![1,2,3,4,5].includes(t)))error('unsupported');
- for(const o of all){if(o.hasDecorationPayload||o.fieldTags.some(t=>![1,2,3,5,19].includes(t))||o.contentFieldTags.some(t=>![501,502,503,504,505].includes(t)))error('unsupported');if(!Number.isInteger(o.index))error('links');if(!Number.isSafeInteger(o.guid)||ids.has(o.guid)||o.resourceGuid!==o.guid)error('links');ids.add(o.guid);}
+ for(const o of all){if(o.hasDecorationPayload||o.fieldTags.some(t=>![1,2,3,5,19].includes(t))||o.contentFieldTags.some(t=>![501,502,503,504,505].includes(t)))error('unsupported',(o.resourceName||'Unnamed control')+' (GUID '+o.guid+'): Unsupported control data');if(!Number.isInteger(o.index))error('links');if(!Number.isSafeInteger(o.guid)||ids.has(o.guid)||o.resourceGuid!==o.guid)error('links');ids.add(o.guid);}
  for(const o of all){if(o!==m.container&&!ids.has(o.parentGuid))error('links');if(o.childGuids.length!==new Set(o.childGuids).size)error('links');for(const id of o.referenceGuids)if(!ids.has(id))error('links');for(const id of o.childGuids)if(!ids.has(id)||all.find(x=>x.guid===id).parentGuid!==o.guid)error('links');if(o.transform){if(o.transform.platformCount!==4||new Set(o.transform.platformIds).size!==4||o.transform.platformIds.some(id=>id<0||id>3))error('transform');const ts=o.transform.platformTransforms||[o.transform];for(const t of ts)for(const k of ['scale','rotation','offset','size','anchorMin','anchorMax','pivot'])if(!t[k]||!Object.values(t[k]).every(Number.isFinite))error('transform');}}
  if(m.container.parentGuid!==null&&m.container.parentGuid!==0)error('links');
  const objects=ordered(m);if(kind(m.container,side)!=='container')objects.unshift(m.container);const unsupported=objects.filter(o=>kind(o,side)==='unsupported').map(o=>o.resourceName+' ('+(names[o.componentTypes.find(t=>names[t])]||'unknown control')+')');
@@ -96,7 +96,7 @@ function objectComponents(o,from,to){
  const k=kind(o,from),guid=o.guid,obj={name:o.componentName||o.resourceName,image_asset_ref:o.imageAssetRef,packed_color:o.packedColor,image_option:o.imageOption,is_mask:o.isMask};
  const allowed=from==='server'?[15,23,11,12,25,38,39,56,57]:[15,86,12,83,90,91,84,96,97,98,99];
  if((component(o,56)&&o.mask?.enabled)||o.isMask)error('unsupported','Mixed control masks are not mapped: '+o.resourceName);
- if(o.components.some(c=>!allowed.includes(c.type)))error('unsupported','Unmapped component in '+o.resourceName);
+ if(o.components.some(c=>!allowed.includes(c.type)))error('unsupported','Unmapped components in '+(o.resourceName||'Unnamed control')+' (GUID '+o.guid+'): '+o.components.filter(c=>!allowed.includes(c.type)).map(c=>(names[c.type]||'Component')+' ('+c.type+')').join(', '));
  let comps=[hex(component(o,15).rawHex),targetComponent(to,to==='client'?86:23,guid)];
  if(k==='fullscreenAnimation'&&to==='server')comps.push(targetComponent(to,11,guid));
  else if(o.transform)comps.push(transformComponent(o,to,to==='server'?(k==='animation'?10:3):k==='text'?31:k==='container'?25:k==='animation'?29:k==='fullscreenAnimation'?30:23));
@@ -217,6 +217,21 @@ function serverTemplate(input){
 }
 // Asset Groups need type-55 parent metadata as well as resource class 61.
 // Copying Server type-13 metadata makes the editor import a Server template.
+function omitFullscreenAnimations(input){
+ const bytes=serverTemplate(input),m=G.describeGia(bytes),removed=new Set(m.children.filter(o=>component(o,57)).map(o=>o.guid));
+ if(!removed.size)return bytes;
+ if(m.children.some(o=>removed.has(o.parentGuid)))error('unsupported','Fullscreen UI Animation with child controls cannot be omitted');
+ const parsed=W.parseRoot(bytes),fields=W.parse(new Uint8Array(bytes).subarray(20,20+parsed.content_len));
+ const kept=fields.filter(f=>f.tag!==2||!removed.has(W.value(W.parse(content(f.data)),501)));
+ for(const f of kept.filter(f=>f.tag===1||f.tag===2)){
+  const o=[m.container,...m.children].find(o=>o.guid===W.value(W.parse(content(f.data)),501));
+  const cf=W.parse(content(f.data)).filter(c=>c.tag!==503),children=o.childGuids.filter(id=>!removed.has(id));
+  if(children.length)cf.push(W.len(503,W.packed(children)));
+  const ef=W.parse(f.data).filter(e=>e.tag!==2||!removed.has(W.value(W.parse(e.data),4)));
+  f.data=W.setBytes(W.build(ef),19,W.setBytes(W.bytes(ef,19),1,W.build(cf)));
+ }
+ return W.wrap(kept,parsed);
+}
 function assetTemplate(input){
  const bytes=G.setServerExportFormat(input,61),m=G.describeGia(bytes),parent=m.container;
  const parsed=W.parseRoot(bytes),fields=W.parse(new Uint8Array(bytes).subarray(20,20+parsed.content_len));
@@ -259,5 +274,5 @@ function validateServerExport(input,format){
   if(expected.resource===21&&(parent.componentTypes.some(t=>![15,23].includes(t))||model.children.some(o=>component(o,56))))error('validation','Unsupported Server Control Template parent or mask');
  }
 }
-const api={handles,decode,convert,textPayload,names,equalScene,decodeModel,serverTemplate,assetTemplate,validateServerExport};if(typeof module==='object')module.exports=api;else root.ControlConverter=api;
+const api={handles,decode,convert,textPayload,names,equalScene,decodeModel,serverTemplate,assetTemplate,omitFullscreenAnimations,validateServerExport};if(typeof module==='object')module.exports=api;else root.ControlConverter=api;
 })(typeof window==='object'?window:globalThis);

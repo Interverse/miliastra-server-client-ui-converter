@@ -30,6 +30,9 @@ const bad=[
  ['changed opaque setting',a=>content(a,c=>{const f=c.find(x=>x.tag===505&&parse(x.data).some(q=>q.tag===502&&q.data===83n)),cf=parse(f.data);cf.push({tag:100,wire:0,data:1n});f.data=encode(cf);})]
 ];
 for(const [label,fn] of bad){assert.throws(()=>C.decodeUiGia(mutate(valid,fn)),undefined,label);checks++;}
+for(const [label,fn,type] of [[...bad[0],999],[...bad[8],83]]) {
+ assert.throws(()=>C.decodeUiGia(mutate(valid,fn)),e=>e.code==='unsupported'&&e.detail.includes('底层 α')&&e.detail.includes('GUID ')&&e.detail.includes(String(type)),label+' identifies rejected control and component');checks++;
+}
 assert.throws(()=>C.decodeUiGia(read('image_template')));checks++;
 const noMask={...json,mask:{...json.mask,enabled:false},client_mask_enabled:false};
 for(const kind of ['server','client']){const b=G.convertJsonToGiaBytes(noMask,kind==='server'?server:client,kind==='server'?G.MODE_IMAGE:G.MODE_CLIENT_IMAGE);const r=C.convertUiGia(b,kind==='server'?client:server);assert.equal(r.result.json.mask.enabled,false);checks++;}

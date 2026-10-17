@@ -4,6 +4,18 @@ for(const name of ['z_ui_animation_client','z_ui_animation_server','z_ui_animati
  const input=fs.readFileSync('tests/fixtures/'+name+'.gia'),bytes=classic?G.toClassic(input):input,r=C.convertUiGia(bytes),back=C.convertUiGia(r.bytes);
  assert(C.equalScene(r.source,r.result));assert(C.equalScene(r.source,back.result));assert.equal(r.result.isClassic,classic);
  const source=r.source.groups||[r.source],result=r.result.groups||[r.result];assert.equal(source.length,result.length);
+ const fullscreen=source.some(g=>g.json.elements.some(e=>e.type==='fullscreenAnimation'));
+ assert(C.availableFormats(r.source).includes('asset-group'));
+ assert.equal(C.hasFullscreenAnimations(r.source),fullscreen);
+ if(fullscreen){
+  const asset=C.convertUiGia(bytes,null,'asset-group');
+  assert(!C.hasFullscreenAnimations(asset.result));assert.equal(asset.result.isClassic,classic);
+  assert.deepEqual(asset.result.json.elements.map(e=>e.imported_name),r.source.json.elements.filter(e=>e.type!=='fullscreenAnimation').map(e=>e.imported_name));
+  const target=r.source.kind==='server'?'client-control':'server-control';
+  assert(C.equalScene(r.source,C.convertUiGia(bytes,null,target).result));
+  const bundle=G.mergeUiGroups([bytes,bytes]);
+  const bundled=C.convertUiGia(bundle,null,'asset-group');assert(!C.hasFullscreenAnimations(bundled.result));assert.equal(bundled.result.groups.length,source.length*2);
+ }
  for(let i=0;i<source.length;i++)for(let j=0;j<source[i].json.elements.length;j++){
   const a=source[i].json.elements[j],b=result[i].json.elements[j],server=source[i].kind==='server'?a.model:b.model,client=source[i].kind==='client'?a.model:b.model;
   if(a.type==='animation'){

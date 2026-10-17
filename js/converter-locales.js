@@ -46,5 +46,9 @@
    const controlText=controlLabels[code].split('|');dict['converter.images']=controlText[0];dict['converter.noServerEquivalent']=controlText[1];
    ['asset-group','server-control','client-control'].forEach((f,i)=>dict['converter.'+f]=formatLabels[code][i]);dict['converter.footer']='GIA Template Converter';
    dict['converter.pageTitle']=dict['converter.footer']+' · Miliastra Toolkit';
+   dict['converter.fullscreenAssetDisabled']=({
+     'zh-CN':'转换为资产组时，全屏 UI 动画将被移除。',
+     'zh-TW':'轉換為資產群組時，全螢幕 UI 動畫將被移除。'
+   })[code]||'Fullscreen UI Animation will be lost when converting to Asset Groups.';
  }
 })();

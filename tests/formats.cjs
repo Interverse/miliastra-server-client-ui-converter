@@ -17,8 +17,8 @@ const classes={'asset-group':61,'server-control':21,'client-control':70};
 for(const classic of [false,true])for(const name of ['ServerControlTemplate','OrangeDisc','z_bigbanner','z_frisbee_all','z_ui_animation_server']){
  const fixture=fs.readFileSync('tests/fixtures/'+name+'.gia'),input=classic?G.toClassic(fixture):fixture;
  const initial=C.decodeUiGia(input);
- const versions=Object.fromEntries(C.FORMATS.map(format=>{const r=C.convertUiGia(input,format==='client-control'?templates.client:templates.server,format);assert.equal(r.result.format,format);assert.equal(r.result.isClassic,classic);assert(C.equalScene(initial,r.result));for(const g of r.result.groups||[r.result])assert.equal(g.model.containerClass,classes[format]);return [format,r.bytes];}));
- for(const from of C.FORMATS)for(const to of C.FORMATS.filter(f=>f!==from)){
+ const versions=Object.fromEntries(C.availableFormats(initial).filter(f=>f!=='asset-group'||!C.hasFullscreenAnimations(initial)).map(format=>{const r=C.convertUiGia(input,format==='client-control'?templates.client:templates.server,format);assert.equal(r.result.format,format);assert.equal(r.result.isClassic,classic);assert(C.equalScene(initial,r.result));for(const g of r.result.groups||[r.result])assert.equal(g.model.containerClass,classes[format]);return [format,r.bytes];}));
+ for(const from of Object.keys(versions))for(const to of Object.keys(versions).filter(f=>f!==from)){
   const r=C.convertUiGia(versions[from],to==='client-control'?templates.client:templates.server,to);
   assert.equal(r.result.format,to);
   if(to==='asset-group')assertAssetMetadata(r.bytes);
@@ -41,6 +41,7 @@ for(let i=0;i<4;i++){
 }
 assert(C.equalScene(serverShapes.result,assetShapes.result));
 for(const file of ['ServerControlTemplate','z_scoreboard']){
+ if(C.hasFullscreenAnimations(C.decodeUiGia(fs.readFileSync('tests/fixtures/'+file+'.gia'))))continue;
  const source=fs.readFileSync('tests/fixtures/'+file+'.gia'),asset=C.convertUiGia(source,templates.server,'asset-group'),client=C.convertUiGia(source,templates.client,'client-control');
  for(let i=0;i<4;i++)assert.deepEqual(asset.result.model.container.transform.platformTransforms[i].size,client.result.model.container.transform.platformTransforms[i].size);
  if(file==='z_scoreboard')fs.writeFileSync('output/z_scoreboard_asset-group.gia',asset.bytes);

@@ -11,6 +11,8 @@
     $('mode').textContent=scene?(scene.isClassic?'Classic':'Beyond'):'—';
     $('group').textContent=scene?scene.json.group_name:'—';$('images').textContent=scene?scene.json.elements.length:'—';
     $('status').hidden=['empty','ready','done'].includes(issue);$('status').textContent=issueDetail||t(issue);$('status').classList.toggle('error',!['empty','ready','inferred','done','working'].includes(issue));
+    $('format-notice').hidden=!scene||!UiConverter.hasFullscreenAnimations(scene);
+    $('format-notice').textContent=t('fullscreenAssetDisabled');
     $('convert').disabled=!pending||busy;$('convert').hidden=outputs.length>0;
     $('convert').textContent=busy?t('working'):t('convert');
     $('downloads').setAttribute('aria-busy',String(busy));
@@ -44,7 +46,7 @@
     const token=generation,job=pending;controller?.abort();controller=new AbortController();const signal=controller.signal;
     busy=true;issue='working';issueDetail='';revoke();render();
     try{
-      const targets=UiConverter.FORMATS.filter(format=>format!==job.format),templates=new Map();
+      const targets=UiConverter.availableFormats(scene).filter(format=>format!==job.format),templates=new Map();
       const results=await Promise.all(targets.map(async format=>{
         const path=format==='client-control'?'assets/client_mask_off_template.gia':'assets/image_template.gia';
         if(!templates.has(path))templates.set(path,(async()=>{const response=await fetch(path,{signal});if(!response.ok)throw Error('template');return new Uint8Array(await response.arrayBuffer());})());

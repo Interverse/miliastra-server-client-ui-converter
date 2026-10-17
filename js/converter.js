@@ -47,16 +47,17 @@
     if(!['server','client'].includes(m.templateKind)||!m.container||!m.children.length) fail('unsupported');
     if(m.rootTags.filter(t=>t===1).length!==1 || m.rootTags.some(t=>![1,2,3,4,5].includes(t))) fail('unsupported');
     const parent=m.container, all=[parent,...m.children], ids=new Set();
+    const reject=(o,reason)=>fail('unsupported',(o.resourceName||'Unnamed control')+' (GUID '+o.guid+'): '+reason);
     for(const o of all) {
       if(!Number.isSafeInteger(o.guid)||ids.has(o.guid)) fail('links'); ids.add(o.guid);
-      if(o.hasDecorationPayload || o.fieldTags.some(t=>![1,2,3,5,19].includes(t)) || !o.contentFieldTags || o.contentFieldTags.some(t=>![501,502,503,504,505].includes(t))) fail('unsupported');
+      if(o.hasDecorationPayload || o.fieldTags.some(t=>![1,2,3,5,19].includes(t)) || !o.contentFieldTags || o.contentFieldTags.some(t=>![501,502,503,504,505].includes(t))) reject(o,'Unsupported control data');
       if(o.resourceGuid!==o.guid) fail('links');
-      if(o.infoSlots.some(s=>!(o===parent?[1,2,4,6]:[1,2]).includes(s.slot))) fail('unsupported');
+      if(o.infoSlots.some(s=>!(o===parent?[1,2,4,6]:[1,2]).includes(s.slot))) reject(o,'Unsupported info slots: '+o.infoSlots.filter(s=>!(o===parent?[1,2,4,6]:[1,2]).includes(s.slot)).map(s=>s.slot).join(', '));
       const allowed=m.templateKind==='server' ? (o===parent?[15,12,23,56]:[15,23,12,38]) : [15,86,12,83,90,91,96,97];
       for(const c of o.components) {
-        if(!(profiles[m.templateKind][c.type]||[]).includes(G.importComponentSignature(c.rawHex,o.guid))) fail('unsupported');
+        if(!(profiles[m.templateKind][c.type]||[]).includes(G.importComponentSignature(c.rawHex,o.guid))) reject(o,'Unsupported component or settings: '+c.type);
       }
-      if(o.componentTypes.some(t=>!allowed.includes(t)) || new Set(o.componentTypes).size!==o.componentTypes.length) fail('unsupported');
+      if(o.componentTypes.some(t=>!allowed.includes(t)) || new Set(o.componentTypes).size!==o.componentTypes.length) reject(o,'Unsupported or duplicate components: '+o.componentTypes.join(', '));
     }
     if(parent.parentGuid!==null && parent.parentGuid!==0) fail('links');
     if(parent.referenceGuids.length!==m.children.length || new Set(parent.referenceGuids).size!==m.children.length || parent.referenceGuids.some(g=>!ids.has(g)||g===parent.guid)) fail('links');
@@ -73,8 +74,8 @@
       if(o.resourceClass!==15||o.parentGuid!==parent.guid||o.childGuids.length||o.referenceGuids.length) fail('links');
       if(o.mask||o.isMask) fail('mask');
       transform(o.transform);
-      if(![0,1].includes(o.imageOption)) fail('unsupported');
-      if(!Number.isSafeInteger(o.imageAssetRef)||o.imageAssetRef<=0||!Number.isSafeInteger(o.packedColor)) fail('unsupported');
+      if(![0,1].includes(o.imageOption)) reject(o,'Unsupported image option: '+o.imageOption);
+      if(!Number.isSafeInteger(o.imageAssetRef)||o.imageAssetRef<=0||!Number.isSafeInteger(o.packedColor)) reject(o,'Unsupported image asset or color');
     }
     let offset={x:0,y:0}, rect, maskEnabled=false, maskShape=1;
     if(m.templateKind==='client') {
@@ -96,7 +97,7 @@
     const elements=ordered.map(o=>({type:'rectangle',imported_index:o.index,image_option:o.imageOption, imported_name:o.resourceName, imported_component_name:o.componentName || '',imported_transform:{scale:{...o.transform.scale},rotation:{...o.transform.rotation},platforms:variants(o.transform).map((p,i)=>({...p,offset:{x:p.offset.x+parentVariants[i].offset.x,y:p.offset.y+parentVariants[i].offset.y}}))}, relative:{x:o.transform.offset.x+offset.x,y:o.transform.offset.y+offset.y},size:{width:o.transform.size.x,height:o.transform.size.y},rotation:{z:o.transform.rotationZ},image_asset_ref:o.imageAssetRef,packed_color:o.packedColor}));
     const inferred=!rect; rect=rect||bounds(elements);
     const name=parent.resourceName;
-    if(!name || name.trim()!==name || (parent.componentName!==undefined && parent.componentName!==name)) fail('unsupported');
+    if(!name || name.trim()!==name || (parent.componentName!==undefined && parent.componentName!==name)) reject(parent,'Unsupported or mismatched control name');
     return {kind:m.templateKind,isClassic:m.isClassic,inferredBounds:inferred,model:m,json:{import_scene:true,group_name:name,elements,image_bounds:rect,client_mask_enabled:maskEnabled,mask:{position:{x:rect.x,y:rect.y},size:{x:rect.width,y:rect.height},shape_type:maskShape,enabled:maskEnabled}}};
   }
   function variants(t) {
@@ -152,9 +153,21 @@
     return {bytes,source,result};
   }
   const FORMATS=['asset-group','server-control','client-control'];
+  function hasFullscreenAnimations(scene){
+    return (scene.groups||[scene]).some(g=>[g.model.container,...g.model.children].some(o=>o.componentTypes.some(t=>t===57||t===99)));
+  }
+  function availableFormats(){return FORMATS.slice();}
   function convertToFormat(input,targetTemplate,targetFormat){
     if(!FORMATS.includes(targetFormat))fail('unsupported','Unknown output format');
     const source=decodeUiGia(input),side=targetFormat==='client-control'?'client':'server';
+    if(targetFormat==='asset-group'&&hasFullscreenAnimations(source)){
+      const stripped=G.mergeUiGroups(G.splitUiGroups(input).map(part=>{
+        const server=decodeUiGia(part).kind==='server'?part:convertUiGia(part,targetTemplate,'server-control').bytes;
+        return Controls.omitFullscreenAnimations(server);
+      }));
+      const output=convertToFormat(stripped,targetTemplate,targetFormat);
+      return {...output,source};
+    }
     const parts=G.splitUiGroups(input).map(part=>{
       const original=decodeUiGia(part);
       const converted=original.kind===side?part:convertUiGia(part,targetTemplate).bytes;
@@ -164,7 +177,7 @@
     if(result.format!==targetFormat||!equalScene(source,result))fail('validation','Output format or controls did not match');
     return {bytes,source,result};
   }
-  const api={decodeUiGia,convertUiGia,equalScene,ConversionError,FORMATS};
+  const api={decodeUiGia,convertUiGia,equalScene,ConversionError,FORMATS,availableFormats,hasFullscreenAnimations};
   if(typeof module==='object') module.exports=api; else root.UiConverter=api;
 })(typeof window==='object'?window:globalThis);
 

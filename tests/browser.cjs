@@ -14,12 +14,12 @@ const G=require('../js/gia'),C=require('../js/converter');
  async function confirm(){await page.waitForFunction(()=>!document.getElementById('convert').disabled);assert.equal(await page.locator('#downloads a').count(),0);await page.locator('#convert').click();}
  async function ready(){await confirm();await page.waitForFunction(()=>document.querySelectorAll('#downloads a').length===2);assert.equal(await page.locator('#downloads').getAttribute('aria-busy'),'false');}
  async function verifyDownloads(input,prefix){
-  const source=C.decodeUiGia(input),targets=C.FORMATS.filter(f=>f!==source.format);
+  const source=C.decodeUiGia(input),targets=C.availableFormats(source).filter(f=>f!==source.format);
   assert.deepEqual(await page.locator('#downloads a').evaluateAll(links=>links.map(a=>a.dataset.format)),targets);
   for(const format of targets){
    const link=page.locator('#downloads a[data-format="'+format+'"]');assert(await link.isVisible());
    const [download]=await Promise.all([page.waitForEvent('download'),link.click()]);const path='test-results/'+prefix+'_'+format+'.gia';await download.saveAs(path);
-   assert(download.suggestedFilename().endsWith('_'+format+'.gia'));const result=C.decodeUiGia(fs.readFileSync(path));assert.equal(result.format,format);assert(C.equalScene(source,result));
+   assert(download.suggestedFilename().endsWith('_'+format+'.gia'));const result=C.decodeUiGia(fs.readFileSync(path));assert.equal(result.format,format);if(format==='asset-group'&&C.hasFullscreenAnimations(source)){assert(!C.hasFullscreenAnimations(result));assert.deepEqual(result.json.elements.map(e=>e.imported_name),source.json.elements.filter(e=>e.type!=='fullscreenAnimation').map(e=>e.imported_name));}else assert(C.equalScene(source,result));
   }
  }
  await page.evaluate(data=>{const transfer=new DataTransfer();transfer.items.add(new File([Uint8Array.from(data)],'page-drop.gia'));document.querySelector('header').dispatchEvent(new DragEvent('dragenter',{bubbles:true,cancelable:true,dataTransfer:transfer}));document.body.dispatchEvent(new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:transfer}));},Array.from(fixture));
@@ -30,10 +30,18 @@ const G=require('../js/gia'),C=require('../js/converter');
   await page.locator('#file').setInputFiles('tests/fixtures/'+name+'.gia');await ready();await verifyDownloads(fs.readFileSync('tests/fixtures/'+name+'.gia'),name);
  }
  // Both remaining formats are prepared together after confirmation.
- for(const format of ['asset-group','client-control']){
+ for(const format of ['client-control']){
   const file='test-results/ServerControlTemplate_'+format+'.gia';await page.locator('#file').setInputFiles(file);await ready();await verifyDownloads(fs.readFileSync(file),'from_'+format);
  }
  await page.selectOption('#language','zh-CN');assert.equal(await page.evaluate(()=>localStorage.getItem('miliastra-lang')),'zhs');assert(await page.locator('#downloads a').first().getAttribute('aria-label'));await page.selectOption('#language','en');
+ for(const name of ['z_ui_animation_client','z_ui_animation_server']){
+  await page.locator('#file').setInputFiles('tests/fixtures/'+name+'.gia');
+  await page.waitForFunction(()=>!document.getElementById('convert').disabled);
+  assert(await page.locator('#format-notice').isVisible());assert((await page.locator('#format-notice').textContent()).includes('Fullscreen UI Animation'));
+  await ready();await verifyDownloads(fs.readFileSync('tests/fixtures/'+name+'.gia'),name+'_fullscreen');
+  assert(await page.locator('#format-notice').isVisible());assert.equal(await page.locator('#downloads a[data-format="asset-group"]').count(),1);
+ }
+ await page.locator('#clear').click();assert(await page.locator('#format-notice').isHidden());
  await page.screenshot({path:'test-results/desktop.png',fullPage:true});await page.setViewportSize({width:390,height:844});await page.screenshot({path:'test-results/mobile.png',fullPage:true});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
  await page.locator('#file').setInputFiles('tests/fixtures/z_clientcontrol.gia');await page.waitForFunction(()=>document.getElementById('status').textContent.includes('GridScrollerControl'));assert.equal(await page.locator('#downloads a').count(),0);
  fs.writeFileSync('test-results/invalid.gia',Buffer.from('not gia'));await page.locator('#file').setInputFiles('test-results/invalid.gia');await page.waitForFunction(()=>document.getElementById('status').classList.contains('error'));assert.equal(await page.locator('#downloads a').count(),0);

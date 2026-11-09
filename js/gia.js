@@ -2184,7 +2184,7 @@ var GIA = (function () {
         continue;
       }
       if (type === COMPONENT_TYPE.NAME && f.tag === NAME_PAYLOAD_FIELD) {
-        out.push(_lenField(f.tag, _client_name_payload(obj.name)));
+        out.push(_lenField(f.tag, _client_name_payload(obj.component_name === undefined ? obj.name : obj.component_name)));
         continue;
       }
       out.push(f);

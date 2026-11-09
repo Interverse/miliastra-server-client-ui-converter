@@ -3,11 +3,18 @@ const G=require('../js/gia'),C=require('../js/converter');
 const read=n=>fs.readFileSync('assets/'+n+'.gia'),server=read('image_template'),client=read('client_mask_off_template');
 let checks=0;
 const json={import_scene:true,group_name:'猫 • UI',image_bounds:{x:12.5,y:-6.25,width:200,height:180},client_mask_enabled:true,mask:{position:{x:12.5,y:-6.25},size:{x:200,y:180},shape_type:1,enabled:true},elements:[{type:'rectangle',imported_name:'底层 α',imported_component_name:'',relative:{x:-20.125,y:3.25},size:{width:50,height:20},rotation:{z:32.5},image_asset_ref:123456,packed_color:0x80334455},{type:'ellipse',imported_name:'上层 β',imported_component_name:'上层 β',relative:{x:1.25,y:-30.75},size:{rx:15,ry:12},rotation:{z:-14},packed_color:0xffaabbcc}]};
+json.elements[1].imported_component_name='Custom control β';
 for(const kind of ['server','client']) for(const classic of [false,true]) {
  let bytes=G.convertJsonToGiaBytes(json,kind==='server'?server:client,kind==='server'?G.MODE_IMAGE:G.MODE_CLIENT_IMAGE);
  bytes=classic?G.toClassic(bytes):G.toOverlimit(bytes);
  const a=C.decodeUiGia(bytes),b=C.convertUiGia(bytes,kind==='server'?client:server),c=C.convertUiGia(b.bytes,kind==='server'?server:client);
- assert(C.equalScene(a,c.result));assert.equal(b.result.isClassic,classic); checks+=2;
+ const sortedNames=pairs=>pairs.sort((a,b)=>a[0].localeCompare(b[0]));
+ const expectedNames=sortedNames(json.elements.map(e=>[e.imported_name,e.imported_component_name]));
+ const names=s=>sortedNames(s.json.elements.map(e=>[e.imported_name,e.imported_component_name]));
+ assert.deepEqual(names(a),expectedNames);
+ assert.deepEqual(names(b.result),expectedNames);
+ assert.deepEqual(names(c.result),expectedNames);
+ assert(C.equalScene(a,c.result));assert.equal(b.result.isClassic,classic); checks+=5;
 }
 for(const n of ['client_image_template','client_mask_off_template','client_mask_template']) {const a=C.decodeUiGia(read(n));const b=C.convertUiGia(read(n),a.kind==='server'?client:server); assert(C.equalScene(a,b.result));checks++;}
 for(const change of [b=>b.slice(0,-1), b=>{b[3]=0;return b;},b=>{b[b.length-1]=0;return b;}]) {assert.throws(()=>C.decodeUiGia(change(new Uint8Array(client))));checks++;}
